@@ -1,0 +1,216 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Screens ── */
+.screen { display: none; width: 100%; height: 100vh; align-items: center; justify-content: center; }
+.screen.active { display: flex; }
+
+/* ── Auth ── */
+.auth-box {
+  background: #1e293b;
+  padding: 2.5rem;
+  border-radius: 1rem;
+  width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.auth-box h1 { font-size: 2.5rem; margin-bottom: .25rem; }
+.tagline { color: #94a3b8; margin-bottom: 1.5rem; }
+.tab-row { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+.tab {
+  flex: 1; padding: .5rem; border: none; border-radius: .5rem;
+  background: #334155; color: #94a3b8; cursor: pointer; font-size: .85rem;
+}
+.tab.active { background: #6366f1; color: #fff; }
+.tab-content { display: none; flex-direction: column; gap: .75rem; }
+.tab-content.active { display: flex; }
+.tab-content input {
+  padding: .7rem 1rem; border-radius: .5rem; border: 1px solid #334155;
+  background: #0f172a; color: #e2e8f0; font-size: 1rem;
+}
+.tab-content button {
+  padding: .75rem; border-radius: .5rem; border: none;
+  background: #6366f1; color: #fff; font-size: 1rem; cursor: pointer; font-weight: 600;
+}
+.tab-content button:hover { background: #4f46e5; }
+.form-error { color: #f87171; font-size: .85rem; min-height: 1.2em; }
+
+/* ── Lobby ── */
+.lobby-box {
+  background: #1e293b; padding: 2.5rem; border-radius: 1rem;
+  width: 420px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.lobby-box h2 { margin-bottom: 1.5rem; font-size: 1.4rem; }
+.rating-badge {
+  background: #6366f1; padding: .2rem .6rem; border-radius: 1rem; font-size: .85rem;
+}
+.room-actions { display: flex; flex-direction: column; gap: .75rem; }
+.room-actions > div { display: flex; gap: .5rem; }
+.room-actions input {
+  flex: 1; padding: .7rem 1rem; border-radius: .5rem; border: 1px solid #334155;
+  background: #0f172a; color: #e2e8f0; font-size: 1rem;
+}
+.room-actions button {
+  padding: .7rem 1.25rem; border-radius: .5rem; border: none;
+  background: #6366f1; color: #fff; cursor: pointer; font-weight: 600; font-size: .95rem;
+  white-space: nowrap;
+}
+.room-actions button:hover { background: #4f46e5; }
+
+/* ── Game Layout ── */
+.game-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr 240px;
+  grid-template-rows: 1fr;
+  width: 100vw;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  background: #1e293b; padding: 1rem;
+  border-right: 1px solid #334155;
+  overflow-y: auto;
+}
+.sidebar h3 { margin-bottom: .75rem; color: #94a3b8; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+#player-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; }
+#player-list li {
+  background: #0f172a; border-radius: .5rem; padding: .5rem .75rem;
+  display: flex; justify-content: space-between; align-items: center; font-size: .9rem;
+}
+#player-list li.drawing { border-left: 3px solid #6366f1; }
+#player-list li.guessed { border-left: 3px solid #22c55e; }
+.player-score { color: #6366f1; font-weight: 700; }
+
+/* ── Canvas Area ── */
+.canvas-area {
+  display: flex; flex-direction: column; align-items: center;
+  background: #0f172a; padding: .75rem; gap: .5rem; position: relative;
+  overflow: hidden;
+}
+.game-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; max-width: 800px;
+}
+#room-code-display { font-size: .8rem; color: #475569; }
+#word-display {
+  font-size: 1.4rem; font-weight: 700; letter-spacing: .3em;
+  text-transform: uppercase; color: #e2e8f0;
+}
+#timer-display {
+  font-size: 1.4rem; font-weight: 700; color: #6366f1; min-width: 2.5rem; text-align: right;
+}
+
+#canvas {
+  background: #fff; border-radius: .5rem; cursor: crosshair;
+  max-width: 100%; max-height: calc(100vh - 200px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+#canvas.no-draw { cursor: default; }
+
+/* ── Toolbar ── */
+.toolbar { width: 100%; max-width: 800px; }
+.toolbar.hidden { display: none; }
+.color-row { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.color-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+}
+.color-btn.active { border-color: #fff; transform: scale(1.2); }
+.tool-row { display: flex; gap: 1rem; align-items: center; }
+.tool-row label { display: flex; align-items: center; gap: .5rem; font-size: .9rem; color: #94a3b8; }
+.tool-row input[type=range] { width: 100px; }
+.tool-row button {
+  padding: .4rem .8rem; border-radius: .4rem; border: none;
+  background: #334155; color: #e2e8f0; cursor: pointer; font-size: .85rem;
+}
+.tool-row button:hover { background: #475569; }
+
+/* ── Chat ── */
+.chat-panel {
+  background: #1e293b; border-left: 1px solid #334155;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#chat-messages {
+  flex: 1; overflow-y: auto; padding: .75rem;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.chat-msg { font-size: .85rem; line-height: 1.4; }
+.chat-msg .name { font-weight: 600; color: #6366f1; }
+.chat-msg.correct .name { color: #22c55e; }
+.chat-msg.system { color: #64748b; font-style: italic; }
+#chat-form { display: flex; border-top: 1px solid #334155; }
+#chat-input {
+  flex: 1; padding: .6rem .75rem; background: transparent; border: none;
+  color: #e2e8f0; font-size: .9rem; outline: none;
+}
+#chat-form button {
+  padding: .6rem .9rem; background: #6366f1; border: none;
+  color: #fff; cursor: pointer; font-weight: 600;
+}
+#chat-form button:hover { background: #4f46e5; }
+
+/* ── Overlays ── */
+.overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10;
+}
+.overlay.hidden { display: none; }
+.overlay-box {
+  background: #1e293b; padding: 2rem; border-radius: 1rem;
+  text-align: center; min-width: 320px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.overlay-box h3 { font-size: 1.4rem; margin-bottom: 1rem; }
+.word-choices { display: flex; gap: 1rem; justify-content: center; margin-top: .5rem; }
+.word-choice-btn {
+  padding: .75rem 1.5rem; background: #6366f1; border: none; border-radius: .5rem;
+  color: #fff; font-size: 1.1rem; cursor: pointer; font-weight: 700;
+}
+.word-choice-btn:hover { background: #4f46e5; }
+#reveal-word { color: #6366f1; font-weight: 700; }
+#waiting-overlay { z-index: 20; }
+#waiting-players { margin: 1rem 0; display: flex; flex-direction: column; gap: .4rem; }
+.waiting-player { background: #0f172a; padding: .5rem 1rem; border-radius: .5rem; }
+#btn-start-game {
+  padding: .75rem 2rem; background: #22c55e; border: none; border-radius: .5rem;
+  color: #fff; font-size: 1.1rem; cursor: pointer; font-weight: 700; margin-top: .5rem;
+}
+#btn-start-game:hover { background: #16a34a; }
+#final-scores { margin: 1rem 0; }
+.final-score-row { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #334155; }
+#btn-play-again {
+  padding: .75rem 2rem; background: #6366f1; border: none; border-radius: .5rem;
+  color: #fff; font-size: 1.1rem; cursor: pointer; font-weight: 700; margin-top: .75rem;
+}
+
+/* ── Leaderboard ── */
+.leaderboard-box {
+  background: #1e293b; padding: 2rem; border-radius: 1rem;
+  width: 520px; max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.leaderboard-box h2 { margin: .75rem 0 1rem; text-align: center; }
+#btn-back-lobby {
+  background: none; border: none; color: #6366f1; cursor: pointer; font-size: .95rem;
+}
+#leaderboard-table { width: 100%; border-collapse: collapse; }
+#leaderboard-table th, #leaderboard-table td {
+  padding: .6rem .75rem; text-align: left; border-bottom: 1px solid #334155;
+}
+#leaderboard-table th { color: #64748b; font-size: .8rem; text-transform: uppercase; }
+#leaderboard-table tr:first-child td { color: #fbbf24; font-weight: 700; }
+
+/* ── Timer colors ── */
+.timer-warn { color: #f97316 !important; }
+.timer-danger { color: #ef4444 !important; }

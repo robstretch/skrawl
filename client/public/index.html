@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skrawl — Draw & Guess</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ─────────────────────────────────────────────── -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-box">
+    <h1>🎨 Skrawl</h1>
+    <p class="tagline">Draw. Guess. Win.</p>
+    <div class="tab-row">
+      <button class="tab active" data-tab="login">Login</button>
+      <button class="tab" data-tab="register">Register</button>
+      <button class="tab" data-tab="guest">Play as Guest</button>
+    </div>
+
+    <form id="form-login" class="tab-content active">
+      <input type="email" id="login-email" placeholder="Email" required>
+      <input type="password" id="login-password" placeholder="Password" required>
+      <button type="submit">Login</button>
+      <p class="form-error" id="login-error"></p>
+    </form>
+
+    <form id="form-register" class="tab-content">
+      <input type="text" id="reg-username" placeholder="Username" required>
+      <input type="email" id="reg-email" placeholder="Email" required>
+      <input type="password" id="reg-password" placeholder="Password" required>
+      <button type="submit">Create Account</button>
+      <p class="form-error" id="reg-error"></p>
+    </form>
+
+    <form id="form-guest" class="tab-content">
+      <input type="text" id="guest-username" placeholder="Pick a username" required>
+      <button type="submit">Play as Guest</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── LOBBY SCREEN ────────────────────────────────────────────── -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-box">
+    <h2>Welcome, <span id="lobby-username"></span>! <span id="lobby-rating" class="rating-badge"></span></h2>
+    <div class="room-actions">
+      <div>
+        <input type="text" id="room-id-input" placeholder="Room code">
+        <button id="btn-join">Join Room</button>
+      </div>
+      <button id="btn-create">Create New Room</button>
+      <button id="btn-leaderboard">🏆 Leaderboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── GAME SCREEN ─────────────────────────────────────────────── -->
+<div id="screen-game" class="screen">
+  <div class="game-layout">
+
+    <!-- Players sidebar -->
+    <div class="sidebar" id="players-sidebar">
+      <h3>Players</h3>
+      <ul id="player-list"></ul>
+    </div>
+
+    <!-- Canvas area -->
+    <div class="canvas-area">
+      <div class="game-header">
+        <div id="room-code-display"></div>
+        <div id="word-display">Waiting...</div>
+        <div id="timer-display"></div>
+      </div>
+
+      <!-- Word choice overlay -->
+      <div id="word-choice-overlay" class="overlay hidden">
+        <div class="overlay-box">
+          <h3>Choose a word to draw:</h3>
+          <div id="word-choices" class="word-choices"></div>
+        </div>
+      </div>
+
+      <!-- Reveal overlay -->
+      <div id="reveal-overlay" class="overlay hidden">
+        <div class="overlay-box">
+          <h3>The word was: <span id="reveal-word"></span></h3>
+        </div>
+      </div>
+
+      <!-- End overlay -->
+      <div id="end-overlay" class="overlay hidden">
+        <div class="overlay-box">
+          <h3>Game Over!</h3>
+          <div id="final-scores"></div>
+          <button id="btn-play-again">Play Again</button>
+        </div>
+      </div>
+
+      <canvas id="canvas" width="800" height="500"></canvas>
+
+      <!-- Drawing tools -->
+      <div id="toolbar" class="toolbar hidden">
+        <div class="color-row">
+          <button class="color-btn active" data-color="#000000" style="background:#000000"></button>
+          <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #ccc"></button>
+          <button class="color-btn" data-color="#ef4444" style="background:#ef4444"></button>
+          <button class="color-btn" data-color="#f97316" style="background:#f97316"></button>
+          <button class="color-btn" data-color="#eab308" style="background:#eab308"></button>
+          <button class="color-btn" data-color="#22c55e" style="background:#22c55e"></button>
+          <button class="color-btn" data-color="#3b82f6" style="background:#3b82f6"></button>
+          <button class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6"></button>
+          <button class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
+          <button class="color-btn" data-color="#6b7280" style="background:#6b7280"></button>
+          <button class="color-btn" data-color="#92400e" style="background:#92400e"></button>
+        </div>
+        <div class="tool-row">
+          <label>Size: <input type="range" id="brush-size" min="2" max="40" value="6"></label>
+          <button id="btn-eraser">⬜ Eraser</button>
+          <button id="btn-clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-panel">
+      <div id="chat-messages"></div>
+      <form id="chat-form">
+        <input type="text" id="chat-input" placeholder="Type your guess..." autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Waiting for players -->
+  <div id="waiting-overlay" class="overlay">
+    <div class="overlay-box">
+      <h3>Room: <span id="waiting-room-code"></span></h3>
+      <p>Share this code with friends!</p>
+      <div id="waiting-players"></div>
+      <button id="btn-start-game">Start Game</button>
+      <p id="start-error" class="form-error"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── LEADERBOARD SCREEN ──────────────────────────────────────── -->
+<div id="screen-leaderboard" class="screen">
+  <div class="leaderboard-box">
+    <button id="btn-back-lobby">← Back</button>
+    <h2>🏆 Leaderboard</h2>
+    <table id="leaderboard-table">
+      <thead><tr><th>#</th><th>Player</th><th>Rating</th><th>W</th><th>GP</th></tr></thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
