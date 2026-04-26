@@ -10,10 +10,17 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: '*', methods: ['GET', 'POST'], credentials: false }
 });
 
-app.use(cors());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 const supabase = createClient(
@@ -214,14 +221,13 @@ async function endGame(roomId) {
   const winner = sorted[0];
   for (const p of room.players) {
     if (!p.userId) continue;
-    const isWinner = p.socketId === winner.socketId;
-    // Simple ELO-ish: win +25, loss -10 (capped)
+    const isWinner = winner && p.socketId === winner.socketId;
     const ratingDelta = isWinner ? 25 : -10;
-    await supabase.from('users').update({
-      games_played: supabase.rpc('increment', { row_id: p.userId, col: 'games_played' }),
-      wins: isWinner ? supabase.rpc('increment', { row_id: p.userId, col: 'wins' }) : undefined,
-      rating: supabase.rpc('clamp_rating', { uid: p.userId, delta: ratingDelta }),
-    }).eq('id', p.userId);
+    try {
+      await supabase.rpc('clamp_rating', { uid: p.userId, delta: ratingDelta });
+      await supabase.rpc('increment', { row_id: p.userId, col: 'games_played' });
+      if (isWinner) await supabase.rpc('increment', { row_id: p.userId, col: 'wins' });
+    } catch (e) { console.error('DB update error:', e.message); }
   }
 
   // Cleanup after 30s
