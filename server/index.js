@@ -437,6 +437,32 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('room:players', room.players);
     socket.emit('room:state', { state: room.state, players: room.players, isPublic: room.isPublic });
 
+    // If game already in progress, catch them up
+    if (room.state === 'choosing' || room.state === 'drawing') {
+      const drawer = room.players.find(p => p.socketId === room.drawerId);
+      const currentRound = Math.floor(room.round / Math.max(1, room.players.length)) + 1;
+      if (drawer) {
+        socket.emit('state:choosing', {
+          drawerId: room.drawerId,
+          drawerName: drawer.username,
+          drawerAvatar: drawer.avatar || '🎨',
+          round: currentRound,
+          maxRounds: room.maxRounds,
+        });
+      }
+      if (room.state === 'drawing' && room.currentWord) {
+        socket.emit('state:drawing', {
+          drawerId: room.drawerId,
+          wordLength: room.currentWord.length,
+          maskedWord: room.currentWord.split('').map((c, i) =>
+            c === ' ' ? ' ' : room.revealedIndices.includes(i) ? c : '_'
+          ).join(''),
+          timeLeft: room.drawingTime,
+        });
+        if (socket.id === room.drawerId) socket.emit('word:chosen', room.currentWord);
+      }
+    }
+
     // Auto-start public room when 2+ players in lobby
     if (room.isPublic && room.state === 'lobby' && room.players.length >= 2) {
       io.to(roomId).emit('auto:starting', { seconds: 3 });
