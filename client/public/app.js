@@ -190,6 +190,7 @@ function joinRoom(id, isPublic = false) {
   roomId = id;
   currentRoomIsPublic = isPublic;
   show('screen-game');
+  document.getElementById('waiting-overlay').classList.remove('hidden');
 
   // Update URL hash
   history.replaceState(null, '', '#' + id);
@@ -214,8 +215,8 @@ function joinRoom(id, isPublic = false) {
     userId: user.id || null,
     token: user.token || null,
   });
-}
 
+}
 document.getElementById('btn-start-game').addEventListener('click', () => {
   const rounds = parseInt(document.getElementById('round-count').value) || 3;
   socket.emit('room:start', { roomId, rounds });
@@ -223,7 +224,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
 document.getElementById('btn-play-again').addEventListener('click', () => {
   document.getElementById('end-overlay').classList.add('hidden');
-  document.getElementById('waiting-overlay').classList.remove('hidden');
+  if (currentRoomIsPublic) {
+    enterPublicRoom();
+  } else {
+    document.getElementById('waiting-overlay').classList.remove('hidden');
+  }
 });
 
 // ── Canvas Setup ──────────────────────────────────────────────────────────────
@@ -459,6 +464,7 @@ socket.on('word:choices', words => {
 });
 
 socket.on('state:drawing', ({ drawerId, wordLength, maskedWord, timeLeft }) => {
+  document.getElementById('waiting-overlay').classList.add('hidden');
   document.getElementById('word-choice-overlay').classList.add('hidden');
   document.getElementById('reveal-overlay').classList.add('hidden');
 
