@@ -14,6 +14,16 @@ function show(screenId) {
   document.getElementById(screenId).classList.add('active');
 }
 
+// ── Mobile chat toggle ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const chatHeader = document.querySelector('.chat-header');
+  if (chatHeader) {
+    chatHeader.addEventListener('click', () => {
+      document.querySelector('.chat-panel').classList.toggle('open');
+    });
+  }
+});
+
 // ── Quick-start (guest) ───────────────────────────────────────────────────────
 document.getElementById('btn-play-now').addEventListener('click', () => {
   const name = document.getElementById('guest-username-main').value.trim();
@@ -147,7 +157,8 @@ function joinRoom(id, isPublic = false) {
 }
 
 document.getElementById('btn-start-game').addEventListener('click', () => {
-  socket.emit('room:start', { roomId });
+  const rounds = parseInt(document.getElementById('round-count').value) || 3;
+  socket.emit('room:start', { roomId, rounds });
 });
 
 document.getElementById('btn-play-again').addEventListener('click', () => {
@@ -264,6 +275,10 @@ function addChat(html, cls = '') {
   const msgs = document.getElementById('chat-messages');
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
+  // Auto-open chat on mobile when messages arrive
+  if (window.innerWidth <= 768) {
+    document.querySelector('.chat-panel').classList.add('open');
+  }
 }
 
 // ── Timer ─────────────────────────────────────────────────────────────────────

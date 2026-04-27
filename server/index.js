@@ -368,7 +368,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:start', ({ roomId }) => {
+  socket.on('room:start', ({ roomId, rounds }) => {
     const room = rooms[roomId];
     if (!room || room.state !== 'lobby') return;
     if (room.players.length < 2) {
@@ -376,6 +376,7 @@ io.on('connection', (socket) => {
       return;
     }
     room.round = 0;
+    if (rounds && rounds >= 1 && rounds <= 10) room.maxRounds = rounds;
     startChoosing(roomId);
   });
 

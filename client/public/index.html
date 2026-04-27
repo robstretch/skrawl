@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Sketchy — Draw & Guess</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
@@ -130,7 +130,9 @@
         </div>
       </div>
 
-      <canvas id="canvas" width="1000" height="620"></canvas>
+      <div class="canvas-wrap">
+        <canvas id="canvas" width="1000" height="620"></canvas>
+      </div>
 
       <!-- Drawing tools -->
       <div id="toolbar" class="toolbar hidden">
@@ -157,6 +159,7 @@
 
     <!-- Chat -->
     <div class="chat-panel">
+      <div class="chat-header">💬 Guess the word</div>
       <div id="chat-messages"></div>
       <form id="chat-form">
         <input type="text" id="chat-input" placeholder="Type your guess..." autocomplete="off">
@@ -172,6 +175,22 @@
       <h3>Room: <span id="waiting-room-code"></span></h3>
       <p>Share this code with friends!</p>
       <div id="waiting-players"></div>
+      <div class="round-select">
+        <label>Rounds:
+          <select id="round-count">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+        </label>
+      </div>
       <button id="btn-start-game">Start Game</button>
       <p id="start-error" class="form-error"></p>
     </div>
