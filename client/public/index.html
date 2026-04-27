@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skrawl — Draw & Guess</title>
+  <title>Sketchy — Draw & Guess</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
 <!-- ── AUTH SCREEN ─────────────────────────────────────────────── -->
 <div id="screen-auth" class="screen active">
   <div class="auth-box">
-    <h1>🎨 Skrawl</h1>
+    <h1>🎨 Sketchy</h1>
     <p class="tagline">Draw. Guess. Win.</p>
     <div class="tab-row">
       <button class="tab active" data-tab="login">Login</button>
@@ -98,7 +98,7 @@
         </div>
       </div>
 
-      <canvas id="canvas" width="800" height="500"></canvas>
+      <canvas id="canvas" width="1000" height="620"></canvas>
 
       <!-- Drawing tools -->
       <div id="toolbar" class="toolbar hidden">
@@ -158,7 +158,8 @@
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script>window.SERVER_URL = 'https://skrawl-production.up.railway.app';</script>
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

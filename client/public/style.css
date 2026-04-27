@@ -68,7 +68,7 @@ body {
 /* ── Game Layout ── */
 .game-layout {
   display: grid;
-  grid-template-columns: 180px 1fr 240px;
+  grid-template-columns: 160px 1fr 220px;
   grid-template-rows: 1fr;
   width: 100vw;
   height: 100vh;
@@ -112,7 +112,7 @@ body {
 
 #canvas {
   background: #fff; border-radius: .5rem; cursor: crosshair;
-  max-width: 100%; max-height: calc(100vh - 200px);
+  max-width: 100%; max-height: calc(100vh - 160px);
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 #canvas.no-draw { cursor: default; }

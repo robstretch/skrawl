@@ -123,7 +123,9 @@ function createRoom(roomId) {
     guessedBy: [],     // socket IDs that guessed correctly
     turnTimer: null,
     chooseTimer: null,
-    drawingTime: 80,
+    drawingTime: 180,
+    hintInterval: null,
+    revealedIndices: [],
   };
 }
 
@@ -185,12 +187,35 @@ function chooseWord(roomId, word) {
   io.to(room.drawerId).emit('word:chosen', word);
 
   room.turnTimer = setTimeout(() => endTurn(roomId), room.drawingTime * 1000);
+
+  // Hints: reveal a random letter every 20 seconds
+  room.revealedIndices = [];
+  room.hintInterval = setInterval(() => {
+    if (!room.currentWord || room.state !== 'drawing') return;
+    const wordArr = room.currentWord.split('');
+    const hideable = wordArr
+      .map((c, i) => ({ c, i }))
+      .filter(({ c, i }) => c !== ' ' && !room.revealedIndices.includes(i));
+    if (hideable.length === 0) return;
+    const pick = hideable[Math.floor(Math.random() * hideable.length)];
+    room.revealedIndices.push(pick.i);
+    const masked = wordArr.map((c, i) =>
+      c === ' ' ? ' ' : room.revealedIndices.includes(i) ? c : '_'
+    ).join('');
+    // Send hint to non-drawers only
+    room.players.forEach(p => {
+      if (p.socketId !== room.drawerId) {
+        io.to(p.socketId).emit('hint', { maskedWord: masked });
+      }
+    });
+  }, 20000);
 }
 
 function endTurn(roomId) {
   const room = rooms[roomId];
   if (!room) return;
   clearTimeout(room.turnTimer);
+  clearInterval(room.hintInterval);
 
   room.state = 'reveal';
   io.to(roomId).emit('state:reveal', { word: room.currentWord });

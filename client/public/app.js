@@ -340,6 +340,12 @@ socket.on('chat', ({ username, message }) => {
   addChat(`<span class="name">${username}:</span> ${message}`);
 });
 
+socket.on('hint', ({ maskedWord }) => {
+  if (!isDrawer) {
+    document.getElementById('word-display').textContent = maskedWord;
+  }
+});
+
 socket.on('state:reveal', ({ word }) => {
   clearInterval(timerInterval);
   document.getElementById('reveal-word').textContent = word;
