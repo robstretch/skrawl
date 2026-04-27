@@ -109,10 +109,21 @@ function maskWord(word) {
 // ─── Room State ──────────────────────────────────────────────────────────────
 
 const rooms = {}; // roomId -> room state
+const PUBLIC_ROOM = 'PUBLIC';
 
-function createRoom(roomId) {
+// Public room matchmaking endpoint
+app.get('/public-room', (req, res) => {
+  // Find a public room in lobby state with < 10 players, or return PUBLIC
+  const available = Object.values(rooms).find(
+    r => r.isPublic && r.state === 'lobby' && r.players.length < 10
+  );
+  res.json({ roomId: available ? available.id : PUBLIC_ROOM });
+});
+
+function createRoom(roomId, isPublic = false) {
   return {
     id: roomId,
+    isPublic,
     players: [],       // { socketId, userId, username, score, rating }
     state: 'lobby',    // lobby | choosing | drawing | reveal | end
     round: 0,
@@ -129,8 +140,8 @@ function createRoom(roomId) {
   };
 }
 
-function getRoom(roomId) {
-  if (!rooms[roomId]) rooms[roomId] = createRoom(roomId);
+function getRoom(roomId, isPublic = false) {
+  if (!rooms[roomId]) rooms[roomId] = createRoom(roomId, isPublic);
   return rooms[roomId];
 }
 
@@ -279,7 +290,8 @@ io.on('connection', (socket) => {
     currentRoom = roomId;
     socket.join(roomId);
 
-    const room = getRoom(roomId);
+    const isPublic = roomId === PUBLIC_ROOM || (rooms[roomId] && rooms[roomId].isPublic);
+    const room = getRoom(roomId, isPublic);
     room.players.push({
       socketId: socket.id,
       userId: verifiedUserId,
@@ -289,7 +301,17 @@ io.on('connection', (socket) => {
     });
 
     io.to(roomId).emit('room:players', room.players);
-    socket.emit('room:state', { state: room.state, players: room.players });
+    socket.emit('room:state', { state: room.state, players: room.players, isPublic: room.isPublic });
+
+    // Auto-start public room when 2+ players in lobby
+    if (room.isPublic && room.state === 'lobby' && room.players.length >= 2) {
+      setTimeout(() => {
+        if (rooms[roomId] && rooms[roomId].state === 'lobby' && rooms[roomId].players.length >= 2) {
+          rooms[roomId].round = 0;
+          startChoosing(roomId);
+        }
+      }, 3000);
+    }
   });
 
   socket.on('room:start', ({ roomId }) => {

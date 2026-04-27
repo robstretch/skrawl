@@ -14,9 +14,32 @@ function show(screenId) {
   document.getElementById(screenId).classList.add('active');
 }
 
+// ── Quick-start (guest) ───────────────────────────────────────────────────────
+document.getElementById('btn-play-now').addEventListener('click', () => {
+  const name = document.getElementById('guest-username-main').value.trim();
+  if (!name) { document.getElementById('guest-username-main').focus(); return; }
+  user = { username: name, rating: null, token: null };
+  enterPublicRoom();
+});
+document.getElementById('guest-username-main').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-play-now').click();
+});
+
+// ── Show/hide login forms ─────────────────────────────────────────────────────
+document.getElementById('show-login').addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('quick-start').classList.add('hidden');
+  document.getElementById('auth-forms').classList.remove('hidden');
+});
+
 // ── Auth tabs ────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'back') {
+      document.getElementById('auth-forms').classList.add('hidden');
+      document.getElementById('quick-start').classList.remove('hidden');
+      return;
+    }
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
@@ -55,16 +78,20 @@ document.getElementById('form-login').addEventListener('submit', async e => {
   loginSuccess(data);
 });
 
-// ── Guest ─────────────────────────────────────────────────────────────────────
-document.getElementById('form-guest').addEventListener('submit', e => {
-  e.preventDefault();
-  user = { username: document.getElementById('guest-username').value, rating: null, token: null };
-  enterLobby();
-});
-
 function loginSuccess({ token, user: u }) {
   user = { ...u, token };
-  enterLobby();
+  enterPublicRoom();
+}
+
+async function enterPublicRoom() {
+  // Find or create a public room
+  try {
+    const res = await fetch(`${SERVER_URL}/public-room`);
+    const { roomId } = await res.json();
+    joinRoom(roomId, true);
+  } catch {
+    joinRoom('PUBLIC', true);
+  }
 }
 
 function enterLobby() {
@@ -87,11 +114,24 @@ document.getElementById('btn-join').addEventListener('click', () => {
 document.getElementById('btn-leaderboard').addEventListener('click', loadLeaderboard);
 
 // ── Join Room ─────────────────────────────────────────────────────────────────
-function joinRoom(id) {
+let currentRoomIsPublic = false;
+
+function joinRoom(id, isPublic = false) {
   roomId = id;
+  currentRoomIsPublic = isPublic;
   show('screen-game');
-  document.getElementById('waiting-room-code').textContent = id;
-  document.getElementById('room-code-display').textContent = `Room: ${id}`;
+
+  if (isPublic) {
+    document.getElementById('waiting-room-code').textContent = 'Public Room';
+    document.getElementById('room-code-display').textContent = 'Public Room';
+    document.getElementById('btn-start-game').style.display = 'none';
+    document.querySelector('#waiting-overlay p').textContent = 'Waiting for more players...';
+  } else {
+    document.getElementById('waiting-room-code').textContent = id;
+    document.getElementById('room-code-display').textContent = 'Room: ' + id;
+    document.getElementById('btn-start-game').style.display = '';
+    document.querySelector('#waiting-overlay p').textContent = 'Share this code with friends!';
+  }
 
   socket.emit('room:join', {
     roomId: id,

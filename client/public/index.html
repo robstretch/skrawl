@@ -4,54 +4,85 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sketchy — Draw & Guess</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ── AUTH SCREEN ─────────────────────────────────────────────── -->
+<!-- ── HOMEPAGE ───────────────────────────────────────────────── -->
 <div id="screen-auth" class="screen active">
-  <div class="auth-box">
-    <h1>🎨 Sketchy</h1>
-    <p class="tagline">Draw. Guess. Win.</p>
-    <div class="tab-row">
-      <button class="tab active" data-tab="login">Login</button>
-      <button class="tab" data-tab="register">Register</button>
-      <button class="tab" data-tab="guest">Play as Guest</button>
+  <div class="hero">
+    <div class="hero-bg">
+      <span class="blob blob1"></span>
+      <span class="blob blob2"></span>
+      <span class="blob blob3"></span>
     </div>
+    <div class="hero-content">
+      <div class="logo-block">
+        <span class="logo-icon">🎨</span>
+        <h1>Sketchy</h1>
+        <p class="tagline">Draw it. Guess it. Win it.</p>
+      </div>
 
-    <form id="form-login" class="tab-content active">
-      <input type="email" id="login-email" placeholder="Email" required>
-      <input type="password" id="login-password" placeholder="Password" required>
-      <button type="submit">Login</button>
-      <p class="form-error" id="login-error"></p>
-    </form>
+      <!-- GUEST QUICK-START (default) -->
+      <div class="quick-start" id="quick-start">
+        <input type="text" id="guest-username-main" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+        <button id="btn-play-now" class="btn-play">Play Now →</button>
+        <p class="login-hint">Have an account? <a href="#" id="show-login">Sign in</a></p>
+      </div>
 
-    <form id="form-register" class="tab-content">
-      <input type="text" id="reg-username" placeholder="Username" required>
-      <input type="email" id="reg-email" placeholder="Email" required>
-      <input type="password" id="reg-password" placeholder="Password" required>
-      <button type="submit">Create Account</button>
-      <p class="form-error" id="reg-error"></p>
-    </form>
+      <!-- LOGIN/REGISTER (hidden by default) -->
+      <div class="auth-forms hidden" id="auth-forms">
+        <div class="tab-row">
+          <button class="tab active" data-tab="login">Login</button>
+          <button class="tab" data-tab="register">Register</button>
+          <button class="tab" data-tab="back">← Back</button>
+        </div>
+        <form id="form-login" class="tab-content active">
+          <input type="email" id="login-email" placeholder="Email" required>
+          <input type="password" id="login-password" placeholder="Password" required>
+          <button type="submit" class="btn-play">Login</button>
+          <p class="form-error" id="login-error"></p>
+        </form>
+        <form id="form-register" class="tab-content">
+          <input type="text" id="reg-username" placeholder="Username" required>
+          <input type="email" id="reg-email" placeholder="Email" required>
+          <input type="password" id="reg-password" placeholder="Password" required>
+          <button type="submit" class="btn-play">Create Account</button>
+          <p class="form-error" id="reg-error"></p>
+        </form>
+      </div>
 
-    <form id="form-guest" class="tab-content">
-      <input type="text" id="guest-username" placeholder="Pick a username" required>
-      <button type="submit">Play as Guest</button>
-    </form>
+      <div class="features">
+        <div class="feature">🖌️ Real-time drawing</div>
+        <div class="feature">⚡ Instant multiplayer</div>
+        <div class="feature">🏆 Ranked leaderboard</div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- ── LOBBY SCREEN ────────────────────────────────────────────── -->
 <div id="screen-lobby" class="screen">
-  <div class="lobby-box">
-    <h2>Welcome, <span id="lobby-username"></span>! <span id="lobby-rating" class="rating-badge"></span></h2>
-    <div class="room-actions">
-      <div>
-        <input type="text" id="room-id-input" placeholder="Room code">
-        <button id="btn-join">Join Room</button>
+  <div class="lobby-wrap">
+    <div class="lobby-header">
+      <span class="logo-sm">🎨 Sketchy</span>
+      <div class="lobby-user">
+        <span id="lobby-username"></span>
+        <span id="lobby-rating" class="rating-badge"></span>
+        <button id="btn-leaderboard" class="btn-sm">🏆 Leaderboard</button>
       </div>
-      <button id="btn-create">Create New Room</button>
-      <button id="btn-leaderboard">🏆 Leaderboard</button>
+    </div>
+    <div class="lobby-center">
+      <div class="lobby-card">
+        <h2>Let's Play</h2>
+        <button id="btn-create" class="btn-play">Create Room</button>
+        <div class="divider">or join one</div>
+        <div class="join-row">
+          <input type="text" id="room-id-input" placeholder="Room code" maxlength="6">
+          <button id="btn-join" class="btn-secondary">Join</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -62,6 +93,7 @@
 
     <!-- Players sidebar -->
     <div class="sidebar" id="players-sidebar">
+      <div class="sidebar-logo">🎨 Sketchy</div>
       <h3>Players</h3>
       <ul id="player-list"></ul>
     </div>
