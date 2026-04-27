@@ -198,18 +198,6 @@ function maskWord(word) {
 const rooms = {}; // roomId -> room state
 const PUBLIC_ROOM = 'PUBLIC';
 
-const AVATARS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🦆','🦉','🐺','🦄','🐬','🦋','🐢','🦀','🐙','🦞','🦎','🐝','🦖','🦕'];
-let avatarCounter = 0;
-function nextAvatar() { return AVATARS[avatarCounter++ % AVATARS.length]; }
-
-// Debug rooms
-app.get('/debug-rooms', (req, res) => {
-  const summary = Object.values(rooms).map(r => ({
-    id: r.id, isPublic: r.isPublic, state: r.state, players: r.players.length
-  }));
-  res.json(summary);
-});
-
 // Public room matchmaking endpoint
 app.get('/public-room', (req, res) => {
   // Find a public room in lobby state with < 10 players, or return PUBLIC
@@ -262,13 +250,9 @@ function startChoosing(roomId) {
   room.guessedBy = [];
   room.currentWord = null;
 
-  const currentRound = Math.floor(room.round / room.players.length) + 1;
   io.to(roomId).emit('state:choosing', {
     drawerId: drawer.socketId,
     drawerName: drawer.username,
-    drawerAvatar: drawer.avatar || '🎨',
-    round: currentRound,
-    maxRounds: room.maxRounds,
   });
 
   // Send word choices only to the drawer
@@ -358,13 +342,7 @@ function endTurn(roomId) {
   updateTurnRatings(room);
 
   room.state = 'reveal';
-  // Build score deltas for reveal
-  const deltas = {};
-  room.guessedBy.forEach((sid, i) => {
-    deltas[sid] = Math.max(50, 500 - i * 100);
-  });
-  if (room.drawerId) deltas[room.drawerId] = room.guessedBy.length * 25;
-  io.to(roomId).emit('state:reveal', { word: room.currentWord, scores: room.players, deltas });
+  io.to(roomId).emit('state:reveal', { word: room.currentWord });
 
   setTimeout(() => {
     room.round++;
@@ -431,41 +409,13 @@ io.on('connection', (socket) => {
       username: verifiedUsername || `Guest_${socket.id.slice(0, 4)}`,
       score: 0,
       rating: 1000,
-      avatar: nextAvatar(),
     });
 
     io.to(roomId).emit('room:players', room.players);
     socket.emit('room:state', { state: room.state, players: room.players, isPublic: room.isPublic });
 
-    // If game already in progress, catch them up
-    if (room.state === 'choosing' || room.state === 'drawing') {
-      const drawer = room.players.find(p => p.socketId === room.drawerId);
-      const currentRound = Math.floor(room.round / Math.max(1, room.players.length)) + 1;
-      if (drawer) {
-        socket.emit('state:choosing', {
-          drawerId: room.drawerId,
-          drawerName: drawer.username,
-          drawerAvatar: drawer.avatar || '🎨',
-          round: currentRound,
-          maxRounds: room.maxRounds,
-        });
-      }
-      if (room.state === 'drawing' && room.currentWord) {
-        socket.emit('state:drawing', {
-          drawerId: room.drawerId,
-          wordLength: room.currentWord.length,
-          maskedWord: room.currentWord.split('').map((c, i) =>
-            c === ' ' ? ' ' : room.revealedIndices.includes(i) ? c : '_'
-          ).join(''),
-          timeLeft: room.drawingTime,
-        });
-        if (socket.id === room.drawerId) socket.emit('word:chosen', room.currentWord);
-      }
-    }
-
     // Auto-start public room when 2+ players in lobby
     if (room.isPublic && room.state === 'lobby' && room.players.length >= 2) {
-      io.to(roomId).emit('auto:starting', { seconds: 3 });
       setTimeout(() => {
         if (rooms[roomId] && rooms[roomId].state === 'lobby' && rooms[roomId].players.length >= 2) {
           rooms[roomId].round = 0;
