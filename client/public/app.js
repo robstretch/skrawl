@@ -33,6 +33,15 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('.chat-panel').classList.toggle('open');
     });
   }
+
+  // Logo clicks go home
+  document.querySelectorAll('.sidebar-logo, .logo-sm').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      history.replaceState(null, '', window.location.pathname);
+      show('screen-auth');
+    });
+  });
 });
 
 // ── Quick-start (guest) ───────────────────────────────────────────────────────
@@ -158,6 +167,10 @@ function enterLobby() {
 }
 
 // ── Lobby actions ─────────────────────────────────────────────────────────────
+document.getElementById('btn-play-public').addEventListener('click', () => {
+  enterPublicRoom();
+});
+
 document.getElementById('btn-create').addEventListener('click', () => {
   const id = Math.random().toString(36).slice(2, 8).toUpperCase();
   joinRoom(id);
@@ -287,9 +300,20 @@ document.getElementById('brush-size').addEventListener('input', e => {
   brushSize = parseInt(e.target.value);
 });
 
+// Brush size buttons
+document.querySelectorAll('.brush-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.brush-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    brushSize = parseInt(btn.dataset.size);
+    erasing = false;
+    document.getElementById('btn-eraser').classList.remove('active');
+  });
+});
+
 document.getElementById('btn-eraser').addEventListener('click', () => {
   erasing = !erasing;
-  document.getElementById('btn-eraser').textContent = erasing ? '✏️ Draw' : '⬜ Eraser';
+  document.getElementById('btn-eraser').classList.toggle('active', erasing);
 });
 
 document.getElementById('btn-clear').addEventListener('click', () => {
@@ -333,13 +357,20 @@ function startTimer(seconds) {
   clearInterval(timerInterval);
   let t = seconds;
   const el = document.getElementById('timer-display');
+  const ring = document.getElementById('timer-ring');
+  const circumference = 113;
   el.textContent = t;
-  el.className = '';
+  el.style.color = '#e2e8f0';
+  if (ring) { ring.style.stroke = '#6366f1'; ring.style.strokeDashoffset = 0; }
   timerInterval = setInterval(() => {
     t--;
     el.textContent = t;
-    if (t <= 10) el.className = 'timer-danger';
-    else if (t <= 20) el.className = 'timer-warn';
+    if (ring) {
+      const offset = circumference * (1 - t / seconds);
+      ring.style.strokeDashoffset = offset;
+    }
+    if (t <= 10) { el.style.color = '#ef4444'; if (ring) ring.style.stroke = '#ef4444'; }
+    else if (t <= 20) { el.style.color = '#f97316'; if (ring) ring.style.stroke = '#f97316'; }
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 }
@@ -366,35 +397,45 @@ let currentDrawerId = null;
 
 function updatePlayerList(players, drawerId) {
   if (drawerId !== undefined) currentDrawerId = drawerId;
-
-  // Maintain join order for draw rotation
   const currentIds = drawOrder.map(p => p.socketId);
   players.forEach(p => { if (!currentIds.includes(p.socketId)) drawOrder.push(p); });
   drawOrder = drawOrder.filter(d => players.find(p => p.socketId === d.socketId));
   drawOrder = drawOrder.map(d => ({ ...d, ...players.find(p => p.socketId === d.socketId) }));
 
   const list = document.getElementById('player-list');
-  list.innerHTML = drawOrder.map(p => {
+  list.innerHTML = drawOrder.map((p, i) => {
     const drawing = p.socketId === currentDrawerId;
-    const guessed = p.guessed;
-    const cls = drawing ? 'drawing' : (guessed ? 'guessed' : '');
-    const icon = drawing ? '🖌️ ' : '   ';
-    const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.7rem">(you)</span>' : '';
-    const rankBadge = p.rating ? `<span class="rank-badge" title="${getRank(p.rating).name}">${getRank(p.rating).emoji}</span>` : '';
-    return `<li class="${cls}"><span>${icon}${rankBadge}${p.username}${you}</span><span class="player-score">${p.score}</span></li>`;
+    const cls = drawing ? 'drawing' : (p.guessed ? 'guessed' : '');
+    const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.65rem">(you)</span>' : '';
+    const rankBadge = p.rating ? getRank(p.rating).emoji : '';
+    const avatar = p.avatar || '👤';
+    const nameClick = p.userId ? `onclick="loadProfile('${p.username}')" style="cursor:pointer"` : '';
+    return `<li class="${cls}">
+      <span class="player-avatar">${drawing ? '🖌️' : avatar}</span>
+      <span class="player-info" ${nameClick}>
+        <div class="player-name">${rankBadge} ${p.username}${you}</div>
+        <div class="player-rank-num">#${i+1}</div>
+      </span>
+      <span class="player-score">${p.score}</span>
+    </li>`;
   }).join('');
 }
 
-socket.on('state:choosing', ({ drawerId, drawerName }) => {
+socket.on('state:choosing', ({ drawerId, drawerName, drawerAvatar, round, maxRounds }) => {
   document.getElementById('waiting-overlay').classList.add('hidden');
   isDrawer = drawerId === socket.id;
   currentDrawerId = drawerId;
   canvas.classList.toggle('no-draw', !isDrawer);
-  document.getElementById('toolbar').classList.toggle('hidden', !isDrawer);
+  document.getElementById('toolbar-panel').classList.toggle('hidden', !isDrawer);
   clearInterval(timerInterval);
   document.getElementById('timer-display').textContent = '';
-  document.getElementById('word-display').textContent = isDrawer ? 'Choose a word!' : `${drawerName} is choosing...`;
-  addChat(`<span class="name">📢</span> ${drawerName} is the drawer`, 'system');
+  const ring = document.getElementById('timer-ring');
+  if (ring) ring.style.strokeDashoffset = 0;
+  document.getElementById('word-display').textContent = isDrawer ? 'Choose a word!' : `${drawerAvatar || ''} ${drawerName} is choosing...`;
+  if (round && maxRounds) {
+    document.getElementById('round-indicator').textContent = `Round ${round} of ${maxRounds}`;
+  }
+  addChat(`<span class="name">📢</span> ${drawerAvatar || ''} ${drawerName} is drawing`, 'system');
   updatePlayerList(drawOrder.length ? drawOrder : [], drawerId);
 });
 
@@ -420,7 +461,7 @@ socket.on('state:drawing', ({ drawerId, wordLength, maskedWord, timeLeft }) => {
 
   isDrawer = drawerId === socket.id;
   canvas.classList.toggle('no-draw', !isDrawer);
-  document.getElementById('toolbar').classList.toggle('hidden', !isDrawer);
+  document.getElementById('toolbar-panel').classList.toggle('hidden', !isDrawer);
 
   if (!isDrawer) {
     document.getElementById('word-display').textContent = maskedWord;
@@ -528,12 +569,23 @@ socket.on('hint', ({ maskedWord }) => {
   }
 });
 
-socket.on('state:reveal', ({ word }) => {
+socket.on('state:reveal', ({ word, scores, deltas }) => {
   clearInterval(timerInterval);
   document.getElementById('reveal-word').textContent = word;
+  // Score delta rows
+  if (scores && deltas) {
+    const sorted = [...scores].sort((a,b) => b.score - a.score);
+    document.getElementById('reveal-scores').innerHTML = sorted.map(p => {
+      const d = deltas[p.socketId];
+      return `<div class="reveal-score-row">
+        <span>${p.avatar || '👤'} ${p.username}</span>
+        <span>${p.score} ${d ? `<span class="rdelta">+${d}</span>` : ''}</span>
+      </div>`;
+    }).join('');
+  }
   document.getElementById('reveal-overlay').classList.remove('hidden');
   document.getElementById('chat-input').disabled = false;
-  setTimeout(() => document.getElementById('reveal-overlay').classList.add('hidden'), 4800);
+  setTimeout(() => document.getElementById('reveal-overlay').classList.add('hidden'), 5000);
 });
 
 socket.on('state:end', ({ scores }) => {
@@ -549,7 +601,8 @@ socket.on('error', msg => {
 });
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
-async function loadProfile(username) {
+async function loadProfile(username, returnTo) {
+  if (returnTo) profileReturnScreen = returnTo;
   show('screen-profile');
   const res = await fetch(`${SERVER_URL}/profile/${encodeURIComponent(username)}`);
   const d = await res.json();
@@ -589,7 +642,8 @@ async function loadProfile(username) {
   `;
 }
 
-document.getElementById('btn-back-from-profile').addEventListener('click', () => show('screen-lobby'));
+let profileReturnScreen = 'screen-lobby';
+document.getElementById('btn-back-from-profile').addEventListener('click', () => show(profileReturnScreen));
 
 async function loadLeaderboard() {
   show('screen-leaderboard');
@@ -606,3 +660,19 @@ async function loadLeaderboard() {
 }
 
 document.getElementById('btn-back-lobby').addEventListener('click', () => show('screen-lobby'));
+document.getElementById('btn-my-profile-btn').addEventListener('click', () => {
+  if (user && user.username) loadProfile(user.username);
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  user = null;
+  drawOrder = [];
+  currentDrawerId = null;
+  roomId = null;
+  history.replaceState(null, '', window.location.pathname);
+  show('screen-auth');
+  // Reset guest input
+  document.getElementById('guest-username-main').value = '';
+  document.getElementById('quick-start').classList.remove('hidden');
+  document.getElementById('auth-forms').classList.add('hidden');
+});

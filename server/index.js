@@ -198,6 +198,10 @@ function maskWord(word) {
 const rooms = {}; // roomId -> room state
 const PUBLIC_ROOM = 'PUBLIC';
 
+const AVATARS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🦆','🦉','🐺','🦄','🐬','🦋','🐢','🦀','🐙','🦞','🦎','🐝','🦖','🦕'];
+let avatarCounter = 0;
+function nextAvatar() { return AVATARS[avatarCounter++ % AVATARS.length]; }
+
 // Public room matchmaking endpoint
 app.get('/public-room', (req, res) => {
   // Find a public room in lobby state with < 10 players, or return PUBLIC
@@ -250,9 +254,13 @@ function startChoosing(roomId) {
   room.guessedBy = [];
   room.currentWord = null;
 
+  const currentRound = Math.floor(room.round / room.players.length) + 1;
   io.to(roomId).emit('state:choosing', {
     drawerId: drawer.socketId,
     drawerName: drawer.username,
+    drawerAvatar: drawer.avatar || '🎨',
+    round: currentRound,
+    maxRounds: room.maxRounds,
   });
 
   // Send word choices only to the drawer
@@ -342,7 +350,13 @@ function endTurn(roomId) {
   updateTurnRatings(room);
 
   room.state = 'reveal';
-  io.to(roomId).emit('state:reveal', { word: room.currentWord });
+  // Build score deltas for reveal
+  const deltas = {};
+  room.guessedBy.forEach((sid, i) => {
+    deltas[sid] = Math.max(50, 500 - i * 100);
+  });
+  if (room.drawerId) deltas[room.drawerId] = room.guessedBy.length * 25;
+  io.to(roomId).emit('state:reveal', { word: room.currentWord, scores: room.players, deltas });
 
   setTimeout(() => {
     room.round++;
@@ -409,6 +423,7 @@ io.on('connection', (socket) => {
       username: verifiedUsername || `Guest_${socket.id.slice(0, 4)}`,
       score: 0,
       rating: 1000,
+      avatar: nextAvatar(),
     });
 
     io.to(roomId).emit('room:players', room.players);

@@ -24,14 +24,12 @@
         <p class="tagline">Draw it. Guess it. Win it.</p>
       </div>
 
-      <!-- GUEST QUICK-START (default) -->
       <div class="quick-start" id="quick-start">
         <input type="text" id="guest-username-main" placeholder="Enter your name..." maxlength="20" autocomplete="off">
         <button id="btn-play-now" class="btn-play">Play Now →</button>
         <p class="login-hint">Have an account? <a href="#" id="show-login">Sign in</a></p>
       </div>
 
-      <!-- LOGIN/REGISTER (hidden by default) -->
       <div class="auth-forms hidden" id="auth-forms">
         <div class="tab-row">
           <button class="tab active" data-tab="login">Login</button>
@@ -70,14 +68,17 @@
       <div class="lobby-user">
         <span id="lobby-username"></span>
         <span id="lobby-rating" class="rating-badge"></span>
+        <button id="btn-my-profile-btn" class="btn-sm">👤 Profile</button>
         <button id="btn-leaderboard" class="btn-sm">🏆 Leaderboard</button>
+        <button id="btn-logout" class="btn-sm btn-logout">Sign Out</button>
       </div>
     </div>
     <div class="lobby-center">
       <div class="lobby-card">
         <h2>Let's Play</h2>
-        <button id="btn-create" class="btn-play">Create Room</button>
-        <div class="divider">or join one</div>
+        <button id="btn-play-public" class="btn-play">🌐 Join Public Room</button>
+        <div class="divider">or play privately</div>
+        <button id="btn-create" class="btn-secondary" style="width:100%">Create Private Room</button>
         <div class="join-row">
           <input type="text" id="room-id-input" placeholder="Room code" maxlength="6">
           <button id="btn-join" class="btn-secondary">Join</button>
@@ -94,6 +95,7 @@
     <!-- Players sidebar -->
     <div class="sidebar" id="players-sidebar">
       <div class="sidebar-logo">🎨 Sketchy</div>
+      <div class="round-indicator" id="round-indicator"></div>
       <h3>Players</h3>
       <ul id="player-list"></ul>
     </div>
@@ -101,12 +103,29 @@
     <!-- Canvas area -->
     <div class="canvas-area">
       <div class="game-header">
-        <div id="room-code-display" title="Click to copy room link" style="cursor:pointer"></div>
-        <div id="word-display">Waiting...</div>
-        <div id="timer-display"></div>
+        <!-- Timer circle -->
+        <div class="timer-wrap">
+          <svg class="timer-svg" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="#1e293b" stroke-width="4"/>
+            <circle id="timer-ring" cx="22" cy="22" r="18" fill="none" stroke="#6366f1" stroke-width="4"
+              stroke-dasharray="113" stroke-dashoffset="0" stroke-linecap="round"
+              transform="rotate(-90 22 22)"/>
+          </svg>
+          <span id="timer-display"></span>
+        </div>
+
+        <!-- Word badge -->
+        <div class="word-badge">
+          <span id="word-display">Waiting...</span>
+        </div>
+
+        <!-- Round + room -->
+        <div class="header-right">
+          <div id="room-code-display" title="Click to copy room link" style="cursor:pointer"></div>
+        </div>
       </div>
 
-      <!-- Word choice overlay -->
+      <!-- Overlays -->
       <div id="word-choice-overlay" class="overlay hidden">
         <div class="overlay-box">
           <h3>Choose a word to draw:</h3>
@@ -114,17 +133,17 @@
         </div>
       </div>
 
-      <!-- Reveal overlay -->
       <div id="reveal-overlay" class="overlay hidden">
-        <div class="overlay-box">
-          <h3>The word was: <span id="reveal-word"></span></h3>
+        <div class="overlay-box reveal-box">
+          <p class="reveal-label">The word was</p>
+          <div class="reveal-word-big" id="reveal-word"></div>
+          <div id="reveal-scores"></div>
         </div>
       </div>
 
-      <!-- End overlay -->
       <div id="end-overlay" class="overlay hidden">
         <div class="overlay-box">
-          <h3>Game Over!</h3>
+          <h3>🎉 Game Over!</h3>
           <div id="final-scores"></div>
           <div class="invite-row">
             <button id="btn-share-result" class="btn-invite">📊 Share Results</button>
@@ -137,26 +156,39 @@
         <canvas id="canvas" width="1000" height="620"></canvas>
       </div>
 
-      <!-- Drawing tools -->
-      <div id="toolbar" class="toolbar hidden">
-        <div class="color-row">
-          <button class="color-btn active" data-color="#000000" style="background:#000000"></button>
-          <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #ccc"></button>
-          <button class="color-btn" data-color="#ef4444" style="background:#ef4444"></button>
-          <button class="color-btn" data-color="#f97316" style="background:#f97316"></button>
-          <button class="color-btn" data-color="#eab308" style="background:#eab308"></button>
-          <button class="color-btn" data-color="#22c55e" style="background:#22c55e"></button>
-          <button class="color-btn" data-color="#3b82f6" style="background:#3b82f6"></button>
-          <button class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6"></button>
-          <button class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
-          <button class="color-btn" data-color="#6b7280" style="background:#6b7280"></button>
-          <button class="color-btn" data-color="#92400e" style="background:#92400e"></button>
-        </div>
-        <div class="tool-row">
-          <label>Size: <input type="range" id="brush-size" min="2" max="40" value="6"></label>
-          <button id="btn-eraser">⬜ Eraser</button>
-          <button id="btn-clear">🗑 Clear</button>
-        </div>
+      <!-- Drawing tools — VERTICAL RIGHT SIDE -->
+      <div id="toolbar" class="toolbar hidden"></div>
+    </div>
+
+    <!-- Vertical toolbar (right) -->
+    <div id="toolbar-panel" class="toolbar-panel hidden">
+      <div class="color-grid" id="color-grid">
+        <button class="color-btn active" data-color="#000000" style="background:#000000"></button>
+        <button class="color-btn" data-color="#ffffff" style="background:#ffffff;border:1px solid #334155"></button>
+        <button class="color-btn" data-color="#ef4444" style="background:#ef4444"></button>
+        <button class="color-btn" data-color="#f97316" style="background:#f97316"></button>
+        <button class="color-btn" data-color="#eab308" style="background:#eab308"></button>
+        <button class="color-btn" data-color="#84cc16" style="background:#84cc16"></button>
+        <button class="color-btn" data-color="#22c55e" style="background:#22c55e"></button>
+        <button class="color-btn" data-color="#14b8a6" style="background:#14b8a6"></button>
+        <button class="color-btn" data-color="#3b82f6" style="background:#3b82f6"></button>
+        <button class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6"></button>
+        <button class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
+        <button class="color-btn" data-color="#f43f5e" style="background:#f43f5e"></button>
+        <button class="color-btn" data-color="#6b7280" style="background:#6b7280"></button>
+        <button class="color-btn" data-color="#92400e" style="background:#92400e"></button>
+        <button class="color-btn" data-color="#1e3a5f" style="background:#1e3a5f"></button>
+        <button class="color-btn" data-color="#fef9c3" style="background:#fef9c3;border:1px solid #334155"></button>
+      </div>
+      <div class="brush-sizes" id="brush-sizes">
+        <button class="brush-btn active" data-size="4"><span style="width:4px;height:4px"></span></button>
+        <button class="brush-btn" data-size="8"><span style="width:8px;height:8px"></span></button>
+        <button class="brush-btn" data-size="14"><span style="width:14px;height:14px"></span></button>
+        <button class="brush-btn" data-size="24"><span style="width:24px;height:24px"></span></button>
+      </div>
+      <div class="toolbar-tools">
+        <button id="btn-eraser" class="tool-icon" title="Eraser">⬜</button>
+        <button id="btn-clear" class="tool-icon" title="Clear">🗑</button>
       </div>
     </div>
 
@@ -166,7 +198,7 @@
       <div id="chat-messages"></div>
       <form id="chat-form">
         <input type="text" id="chat-input" placeholder="Type your guess..." autocomplete="off">
-        <button type="submit">Send</button>
+        <button type="submit">→</button>
       </form>
     </div>
 
@@ -204,7 +236,7 @@
   </div>
 </div>
 
-<!-- ── PROFILE SCREEN ────────────────────────────────────────── -->
+<!-- ── PROFILE SCREEN ─────────────────────────────────────────── -->
 <div id="screen-profile" class="screen">
   <div class="profile-box">
     <button id="btn-back-from-profile">← Back</button>
