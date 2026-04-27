@@ -2,6 +2,17 @@
 const SERVER_URL = window.SERVER_URL || 'http://localhost:3001';
 const socket = io(SERVER_URL);
 
+// ── Rank helper ───────────────────────────────────────────────────────────────
+function getRank(rating) {
+  if (rating >= 1800) return { name: 'Legend', emoji: '🏆' };
+  if (rating >= 1600) return { name: 'Diamond', emoji: '💎' };
+  if (rating >= 1400) return { name: 'Gold', emoji: '🥇' };
+  if (rating >= 1200) return { name: 'Silver', emoji: '🥈' };
+  if (rating >= 1000) return { name: 'Bronze', emoji: '🥉' };
+  if (rating >= 800)  return { name: 'Iron', emoji: '⚙️' };
+  return { name: 'Wood', emoji: '🪵' };
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 let user = null;       // { id, username, rating, token }
 let roomId = null;
@@ -29,7 +40,14 @@ document.getElementById('btn-play-now').addEventListener('click', () => {
   const name = document.getElementById('guest-username-main').value.trim();
   if (!name) { document.getElementById('guest-username-main').focus(); return; }
   user = { username: name, rating: null, token: null };
-  enterPublicRoom();
+  if (window._pendingRoom) {
+    const pending = window._pendingRoom;
+    window._pendingRoom = null;
+    const isPublic = pending.startsWith('PUBLIC');
+    joinRoom(pending, isPublic);
+  } else {
+    enterPublicRoom();
+  }
 });
 document.getElementById('guest-username-main').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-play-now').click();
@@ -95,11 +113,21 @@ document.getElementById('form-login').addEventListener('submit', async e => {
 
 function loginSuccess({ token, user: u }) {
   user = { ...u, token };
-  enterPublicRoom();
+  enterAfterAuth();
+}
+
+function enterAfterAuth() {
+  if (window._pendingRoom) {
+    const pending = window._pendingRoom;
+    window._pendingRoom = null;
+    const isPublic = pending.startsWith('PUBLIC');
+    joinRoom(pending, isPublic);
+  } else {
+    enterPublicRoom();
+  }
 }
 
 async function enterPublicRoom() {
-  // Find or create a public room
   try {
     const res = await fetch(`${SERVER_URL}/public-room`);
     const { roomId } = await res.json();
@@ -109,9 +137,23 @@ async function enterPublicRoom() {
   }
 }
 
+// Check URL hash on load — auto-join if present
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash.slice(1); // e.g. #ABC123 -> ABC123
+  if (hash) {
+    // Show auth first, then auto-join after login/guest
+    window._pendingRoom = hash;
+  }
+});
+
 function enterLobby() {
   document.getElementById('lobby-username').textContent = user.username;
-  document.getElementById('lobby-rating').textContent = user.rating ? `⭐ ${user.rating}` : 'Guest';
+  if (user.rating) {
+    const rank = getRank(user.rating);
+    document.getElementById('lobby-rating').textContent = `${rank.emoji} ${rank.name} · ${user.rating}`;
+  } else {
+    document.getElementById('lobby-rating').textContent = 'Guest';
+  }
   show('screen-lobby');
 }
 
@@ -136,16 +178,21 @@ function joinRoom(id, isPublic = false) {
   currentRoomIsPublic = isPublic;
   show('screen-game');
 
+  // Update URL hash
+  history.replaceState(null, '', '#' + id);
+
   if (isPublic) {
     document.getElementById('waiting-room-code').textContent = 'Public Room';
     document.getElementById('room-code-display').textContent = 'Public Room';
     document.getElementById('btn-start-game').style.display = 'none';
     document.querySelector('#waiting-overlay p').textContent = 'Waiting for more players...';
+    document.querySelector('.round-select').style.display = 'none';
   } else {
     document.getElementById('waiting-room-code').textContent = id;
     document.getElementById('room-code-display').textContent = 'Room: ' + id;
     document.getElementById('btn-start-game').style.display = '';
     document.querySelector('#waiting-overlay p').textContent = 'Share this code with friends!';
+    document.querySelector('.round-select').style.display = '';
   }
 
   socket.emit('room:join', {
@@ -333,7 +380,8 @@ function updatePlayerList(players, drawerId) {
     const cls = drawing ? 'drawing' : (guessed ? 'guessed' : '');
     const icon = drawing ? '🖌️ ' : '   ';
     const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.7rem">(you)</span>' : '';
-    return `<li class="${cls}"><span>${icon}${p.username}${you}</span><span class="player-score">${p.score}</span></li>`;
+    const rankBadge = p.rating ? `<span class="rank-badge" title="${getRank(p.rating).name}">${getRank(p.rating).emoji}</span>` : '';
+    return `<li class="${cls}"><span>${icon}${rankBadge}${p.username}${you}</span><span class="player-score">${p.score}</span></li>`;
   }).join('');
 }
 
@@ -400,6 +448,65 @@ socket.on('canvas:clear', () => {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 });
 
+// ── Share helpers ─────────────────────────────────────────────────────────
+async function shareRoom() {
+  const url = window.location.href;
+  const text = `Come play Sketchy with me! 🎨 Draw & guess words in real-time. Join here: ${url}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Play Sketchy with me!', text, url }); return; } catch {}
+  }
+  await navigator.clipboard.writeText(url);
+  return '✅ Link copied!';
+}
+
+async function shareResults(scores) {
+  const top3 = scores.slice(0, 3).map((p, i) => {
+    const medals = ['🥇', '🥈', '🥉'];
+    return `${medals[i] || ''} ${p.username}: ${p.score} pts`;
+  }).join('\n');
+  const text = `Just played Sketchy! 🎨\n\n${top3}\n\nPlay free at playsketchy.com`;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Sketchy Results', text, url: 'https://playsketchy.com' }); return; } catch {}
+  }
+  await navigator.clipboard.writeText(text);
+  return '✅ Copied!';
+}
+
+// Invite button in waiting room
+document.getElementById('btn-invite').addEventListener('click', async () => {
+  const msg = await shareRoom();
+  if (msg) {
+    const fb = document.getElementById('invite-feedback');
+    fb.textContent = msg;
+    setTimeout(() => fb.textContent = '', 2000);
+  }
+});
+
+// Share results button
+document.getElementById('btn-share-result').addEventListener('click', async () => {
+  const rows = document.querySelectorAll('.final-score-row');
+  const scores = [...rows].map(r => ({
+    username: r.querySelector('span:first-child').textContent.replace(/[🥇🥈🥉]/g, '').trim(),
+    score: r.querySelector('span:last-child').textContent
+  }));
+  const msg = await shareResults(scores);
+  if (msg) {
+    document.getElementById('btn-share-result').textContent = msg;
+    setTimeout(() => document.getElementById('btn-share-result').textContent = '📊 Share Results', 2000);
+  }
+});
+
+// Copy room link on click
+document.getElementById('room-code-display').addEventListener('click', () => {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    const el = document.getElementById('room-code-display');
+    const orig = el.textContent;
+    el.textContent = '✅ Copied!';
+    setTimeout(() => el.textContent = orig, 1500);
+  });
+});
+
 socket.on('guess:correct', ({ socketId, username, points, scores }) => {
   const isMe = socketId === socket.id;
   addChat(`<span class="name">✅ ${username}</span> guessed it! (+${points})`, 'correct');
@@ -442,6 +549,48 @@ socket.on('error', msg => {
 });
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
+async function loadProfile(username) {
+  show('screen-profile');
+  const res = await fetch(`${SERVER_URL}/profile/${encodeURIComponent(username)}`);
+  const d = await res.json();
+  if (d.error) { document.getElementById('profile-content').innerHTML = '<p style="color:#94a3b8">User not found</p>'; return; }
+  const wr = d.games_played > 0 ? Math.round((d.wins / d.games_played) * 100) : 0;
+  document.getElementById('profile-content').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${d.rank.emoji}</div>
+      <div>
+        <h2>${d.username}</h2>
+        <div class="profile-rank">${d.rank.emoji} ${d.rank.name} &bull; ${d.rating} pts</div>
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div class="stat-card"><div class="stat-val">${d.games_played}</div><div class="stat-label">Games</div></div>
+      <div class="stat-card"><div class="stat-val">${d.wins}</div><div class="stat-label">Wins</div></div>
+      <div class="stat-card"><div class="stat-val">${wr}%</div><div class="stat-label">Win Rate</div></div>
+    </div>
+    <div class="rank-breakdown">
+      <h3>Rank Breakdown</h3>
+      <div class="rank-row">
+        <span>🖌️ Drawing</span>
+        <span>${d.drawing_rank.emoji} ${d.drawing_rank.name}</span>
+        <span class="rank-pts">${d.drawing_rating} pts</span>
+      </div>
+      <div class="rank-row">
+        <span>💡 Guessing</span>
+        <span>${d.guessing_rank.emoji} ${d.guessing_rank.name}</span>
+        <span class="rank-pts">${d.guessing_rating} pts</span>
+      </div>
+      <div class="rank-row overall">
+        <span>⭐ Overall</span>
+        <span>${d.rank.emoji} ${d.rank.name}</span>
+        <span class="rank-pts">${d.rating} pts</span>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById('btn-back-from-profile').addEventListener('click', () => show('screen-lobby'));
+
 async function loadLeaderboard() {
   show('screen-leaderboard');
   const res = await fetch(`${SERVER_URL}/leaderboard`);
@@ -449,7 +598,7 @@ async function loadLeaderboard() {
   document.getElementById('leaderboard-body').innerHTML = data
     .map((p, i) => `<tr>
       <td>${i + 1}</td>
-      <td>${p.username}</td>
+      <td style="cursor:pointer;color:#818cf8" onclick="loadProfile('${p.username}')">${getRank(p.rating).emoji} ${p.username}</td>
       <td>${p.rating}</td>
       <td>${p.wins}</td>
       <td>${p.games_played}</td>

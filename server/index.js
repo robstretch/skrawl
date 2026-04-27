@@ -119,14 +119,29 @@ app.post('/auth/login', async (req, res) => {
   res.json({ token, user: { id: user.id, username: user.username, email: user.email, rating: user.rating } });
 });
 
+function getRank(rating) {
+  if (rating >= 1800) return { name: 'Legend', emoji: '🏆', color: '#fbbf24' };
+  if (rating >= 1600) return { name: 'Diamond', emoji: '💎', color: '#67e8f9' };
+  if (rating >= 1400) return { name: 'Gold', emoji: '🥇', color: '#fbbf24' };
+  if (rating >= 1200) return { name: 'Silver', emoji: '🥈', color: '#94a3b8' };
+  if (rating >= 1000) return { name: 'Bronze', emoji: '🥉', color: '#b45309' };
+  if (rating >= 800)  return { name: 'Iron', emoji: '⚙️', color: '#64748b' };
+  return { name: 'Wood', emoji: '🪵', color: '#78350f' };
+}
+
 app.get('/profile/:username', async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('username, rating, games_played, wins, created_at')
+    .select('username, rating, drawing_rating, guessing_rating, games_played, wins, created_at')
     .eq('username', req.params.username)
     .single();
   if (error) return res.status(404).json({ error: 'User not found' });
-  res.json(data);
+  res.json({
+    ...data,
+    rank: getRank(data.rating),
+    drawing_rank: getRank(data.drawing_rating),
+    guessing_rank: getRank(data.guessing_rating),
+  });
 });
 
 app.get('/leaderboard', async (req, res) => {
@@ -276,11 +291,37 @@ function chooseWord(roomId, word) {
   }, 20000);
 }
 
+async function updateTurnRatings(room) {
+  const guessers = room.players.filter(p => p.socketId !== room.drawerId);
+  if (guessers.length === 0) return;
+
+  const guessedRatio = room.guessedBy.length / guessers.length;
+
+  // Update drawer's drawing rating
+  const drawer = room.players.find(p => p.socketId === room.drawerId);
+  if (drawer && drawer.userId) {
+    try { await supabase.rpc('update_drawing_rating', { uid: drawer.userId, guessed_ratio: guessedRatio }); }
+    catch (e) { console.error('drawing rating error:', e.message); }
+  }
+
+  // Update guessers' guessing ratings
+  const totalGuessers = room.guessedBy.length;
+  for (const p of guessers) {
+    if (!p.userId) continue;
+    const guessedCorrectly = room.guessedBy.includes(p.socketId);
+    const guessPosition = room.guessedBy.indexOf(p.socketId); // 0 = first
+    const speedBonus = guessedCorrectly ? Math.max(0, 10 - guessPosition * 3) : 0;
+    try { await supabase.rpc('update_guessing_rating', { uid: p.userId, guessed: guessedCorrectly, speed_bonus: speedBonus }); }
+    catch (e) { console.error('guessing rating error:', e.message); }
+  }
+}
+
 function endTurn(roomId) {
   const room = rooms[roomId];
   if (!room) return;
   clearTimeout(room.turnTimer);
   clearInterval(room.hintInterval);
+  updateTurnRatings(room);
 
   room.state = 'reveal';
   io.to(roomId).emit('state:reveal', { word: room.currentWord });
@@ -307,14 +348,12 @@ async function endGame(roomId) {
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
   io.to(roomId).emit('state:end', { scores: sorted });
 
-  // Update DB for logged-in players
+  // Update DB stats for logged-in players
   const winner = sorted[0];
   for (const p of room.players) {
     if (!p.userId) continue;
     const isWinner = winner && p.socketId === winner.socketId;
-    const ratingDelta = isWinner ? 25 : -10;
     try {
-      await supabase.rpc('clamp_rating', { uid: p.userId, delta: ratingDelta });
       await supabase.rpc('increment', { row_id: p.userId, col: 'games_played' });
       if (isWinner) await supabase.rpc('increment', { row_id: p.userId, col: 'wins' });
     } catch (e) { console.error('DB update error:', e.message); }

@@ -101,7 +101,7 @@
     <!-- Canvas area -->
     <div class="canvas-area">
       <div class="game-header">
-        <div id="room-code-display"></div>
+        <div id="room-code-display" title="Click to copy room link" style="cursor:pointer"></div>
         <div id="word-display">Waiting...</div>
         <div id="timer-display"></div>
       </div>
@@ -126,7 +126,10 @@
         <div class="overlay-box">
           <h3>Game Over!</h3>
           <div id="final-scores"></div>
-          <button id="btn-play-again">Play Again</button>
+          <div class="invite-row">
+            <button id="btn-share-result" class="btn-invite">📊 Share Results</button>
+            <button id="btn-play-again">Play Again</button>
+          </div>
         </div>
       </div>
 
@@ -191,9 +194,21 @@
           </select>
         </label>
       </div>
+      <div class="invite-row">
+        <button id="btn-invite" class="btn-invite">🔗 Invite Friends</button>
+        <span id="invite-feedback" class="invite-feedback"></span>
+      </div>
       <button id="btn-start-game">Start Game</button>
       <p id="start-error" class="form-error"></p>
     </div>
+  </div>
+</div>
+
+<!-- ── PROFILE SCREEN ────────────────────────────────────────── -->
+<div id="screen-profile" class="screen">
+  <div class="profile-box">
+    <button id="btn-back-from-profile">← Back</button>
+    <div id="profile-content"></div>
   </div>
 </div>
 
