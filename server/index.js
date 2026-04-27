@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const { Resend } = require('resend');
+const crypto = require('crypto');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -29,6 +31,8 @@ const supabase = createClient(
 );
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const PORT = process.env.PORT || 3001;
+const resend = new Resend(process.env.RESEND_API_KEY);
+const APP_URL = process.env.APP_URL || 'https://playsketchy.com';
 
 // ─── Auth Routes ────────────────────────────────────────────────────────────
 
@@ -38,15 +42,64 @@ app.post('/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'All fields required' });
 
   const hash = await bcrypt.hash(password, 10);
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+
   const { data, error } = await supabase
     .from('users')
-    .insert({ username, email, password_hash: hash, rating: 1000, games_played: 0, wins: 0 })
+    .insert({ username, email, password_hash: hash, rating: 1000, games_played: 0, wins: 0, verified: false, verification_token: verificationToken })
     .select('id, username, email, rating')
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
-  const token = jwt.sign({ id: data.id, username: data.username }, JWT_SECRET);
-  res.json({ token, user: data });
+
+  // Send verification email
+  try {
+    await resend.emails.send({
+      from: 'Sketchy <noreply@playsketchy.com>',
+      to: email,
+      subject: 'Verify your Sketchy account',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;background:#0f172a;color:#e2e8f0;border-radius:1rem">
+          <h1 style="font-size:2rem;margin-bottom:.5rem">🎨 Sketchy</h1>
+          <p style="color:#94a3b8;margin-bottom:1.5rem">Thanks for signing up, ${username}!</p>
+          <p style="margin-bottom:1.5rem">Click the button below to verify your email and start playing.</p>
+          <a href="${APP_URL}/verify?token=${verificationToken}" style="display:inline-block;padding:.875rem 2rem;background:#6366f1;color:#fff;border-radius:.75rem;text-decoration:none;font-weight:700;font-size:1rem">Verify Email →</a>
+          <p style="margin-top:1.5rem;color:#475569;font-size:.85rem">If you didn't sign up, ignore this email.</p>
+        </div>
+      `
+    });
+  } catch (e) { console.error('Email error:', e.message); }
+
+  res.json({ pending: true, message: 'Check your email to verify your account.' });
+});
+
+// Email verification endpoint
+app.get('/verify', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Invalid token');
+
+  const { data, error } = await supabase
+    .from('users')
+    .update({ verified: true, verification_token: null })
+    .eq('verification_token', token)
+    .select('id, username')
+    .single();
+
+  if (error || !data) return res.send(`
+    <html><body style="font-family:sans-serif;text-align:center;padding:4rem;background:#0f172a;color:#e2e8f0">
+      <h2>❌ Invalid or expired link</h2>
+      <a href="${APP_URL}" style="color:#6366f1">Back to Sketchy</a>
+    </body></html>
+  `);
+
+  res.send(`
+    <html><body style="font-family:sans-serif;text-align:center;padding:4rem;background:#0f172a;color:#e2e8f0">
+      <h1>🎨 Sketchy</h1>
+      <h2 style="color:#22c55e">✅ Email verified!</h2>
+      <p style="color:#94a3b8">You're all set, ${data.username}. Go play!</p>
+      <a href="${APP_URL}" style="display:inline-block;margin-top:1.5rem;padding:.875rem 2rem;background:#6366f1;color:#fff;border-radius:.75rem;text-decoration:none;font-weight:700">Play Now →</a>
+    </body></html>
+  `);
 });
 
 app.post('/auth/login', async (req, res) => {
@@ -60,6 +113,7 @@ app.post('/auth/login', async (req, res) => {
   if (error || !user) return res.status(401).json({ error: 'Invalid credentials' });
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user.verified) return res.status(401).json({ error: 'Please verify your email before logging in.' });
 
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
   res.json({ token, user: { id: user.id, username: user.username, email: user.email, rating: user.rating } });

@@ -60,6 +60,11 @@ document.getElementById('form-register').addEventListener('submit', async e => {
   });
   const data = await res.json();
   if (data.error) { document.getElementById('reg-error').textContent = data.error; return; }
+  if (data.pending) {
+    document.getElementById('reg-error').style.color = '#22c55e';
+    document.getElementById('reg-error').textContent = '✅ ' + data.message;
+    return;
+  }
   loginSuccess(data);
 });
 
@@ -294,25 +299,40 @@ socket.on('room:state', ({ state, players }) => {
   }
 });
 
-function updatePlayerList(players) {
+let drawOrder = [];
+let currentDrawerId = null;
+
+function updatePlayerList(players, drawerId) {
+  if (drawerId !== undefined) currentDrawerId = drawerId;
+
+  // Maintain join order for draw rotation
+  const currentIds = drawOrder.map(p => p.socketId);
+  players.forEach(p => { if (!currentIds.includes(p.socketId)) drawOrder.push(p); });
+  drawOrder = drawOrder.filter(d => players.find(p => p.socketId === d.socketId));
+  drawOrder = drawOrder.map(d => ({ ...d, ...players.find(p => p.socketId === d.socketId) }));
+
   const list = document.getElementById('player-list');
-  list.innerHTML = players
-    .sort((a, b) => b.score - a.score)
-    .map(p => `<li class="${p.socketId === socket.id && isDrawer ? 'drawing' : ''}">
-      <span>${p.username}</span>
-      <span class="player-score">${p.score}</span>
-    </li>`).join('');
+  list.innerHTML = drawOrder.map(p => {
+    const drawing = p.socketId === currentDrawerId;
+    const guessed = p.guessed;
+    const cls = drawing ? 'drawing' : (guessed ? 'guessed' : '');
+    const icon = drawing ? '🖌️ ' : '   ';
+    const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.7rem">(you)</span>' : '';
+    return `<li class="${cls}"><span>${icon}${p.username}${you}</span><span class="player-score">${p.score}</span></li>`;
+  }).join('');
 }
 
 socket.on('state:choosing', ({ drawerId, drawerName }) => {
   document.getElementById('waiting-overlay').classList.add('hidden');
   isDrawer = drawerId === socket.id;
+  currentDrawerId = drawerId;
   canvas.classList.toggle('no-draw', !isDrawer);
   document.getElementById('toolbar').classList.toggle('hidden', !isDrawer);
   clearInterval(timerInterval);
   document.getElementById('timer-display').textContent = '';
   document.getElementById('word-display').textContent = isDrawer ? 'Choose a word!' : `${drawerName} is choosing...`;
   addChat(`<span class="name">📢</span> ${drawerName} is the drawer`, 'system');
+  updatePlayerList(drawOrder.length ? drawOrder : [], drawerId);
 });
 
 socket.on('word:choices', words => {
