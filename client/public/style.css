@@ -231,6 +231,52 @@ body {
 }
 #canvas.no-draw { cursor: default; }
 
+/* Vertical toolbar */
+.toolbar {
+  background: #111827; border-left: 1px solid #1e293b;
+  display: flex; flex-direction: column; align-items: center;
+  padding: .5rem .25rem; gap: .5rem; overflow-y: auto; width: 56px;
+}
+.toolbar.hidden { display: none !important; }
+.color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.color-btn {
+  width: 22px; height: 22px; border-radius: 4px;
+  border: 2px solid transparent; cursor: pointer; transition: transform .1s;
+}
+.color-btn.active { border-color: #fff; transform: scale(1.2); }
+.brush-sizes {
+  display: flex; flex-direction: column; gap: 3px; align-items: center;
+  padding: .3rem 0; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; width: 100%;
+}
+.brush-btn {
+  width: 34px; height: 34px; border-radius: .4rem; border: 2px solid transparent;
+  background: #1e293b; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.brush-btn.active { border-color: #6366f1; }
+.brush-btn span { background: #e2e8f0; border-radius: 50%; display: block; }
+.toolbar-tools { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.tool-icon {
+  width: 34px; height: 34px; border-radius: .4rem; border: none;
+  background: #1e293b; color: #e2e8f0; cursor: pointer; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto;
+}
+.tool-icon:hover, .tool-icon.active { background: #6366f1; }
+
+/* Player avatars */
+.player-avatar { font-size: 1rem; flex-shrink: 0; }
+.player-info { flex: 1; min-width: 0; }
+.player-name { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-rank-num { font-size: .62rem; color: #475569; }
+
+/* Reveal styles */
+.reveal-label { color: #64748b; font-size: .85rem; margin-bottom: .25rem; }
+.reveal-word-big { font-size: 2.2rem; font-weight: 900; color: #6366f1; margin-bottom: .75rem; }
+.reveal-score-row { display: flex; justify-content: space-between; padding: .35rem 0; border-bottom: 1px solid #334155; font-size: .88rem; }
+.rdelta { color: #22c55e; font-weight: 700; }
+
+/* Round indicator in sidebar */
+.round-indicator { padding: .3rem 1rem; font-size: .72rem; color: #475569; border-bottom: 1px solid #1e293b; min-height: 24px; }
+
 /* ── Toolbar ── */
 .toolbar {
   background: #111827; border-top: 1px solid #1e293b;

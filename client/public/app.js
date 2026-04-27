@@ -290,9 +290,21 @@ document.querySelectorAll('.color-btn').forEach(btn => {
   });
 });
 
-document.getElementById('brush-size').addEventListener('input', e => {
-  brushSize = parseInt(e.target.value);
+document.querySelectorAll('.brush-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.brush-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    brushSize = parseInt(btn.dataset.size);
+    erasing = false;
+    document.getElementById('btn-eraser').classList.remove('active');
+  });
 });
+
+document.getElementById('btn-eraser').addEventListener('click', () => {
+  erasing = !erasing;
+  document.getElementById('btn-eraser').classList.toggle('active', erasing);
+});
+
 
 document.getElementById('btn-eraser').addEventListener('click', () => {
   erasing = !erasing;
@@ -340,13 +352,16 @@ function startTimer(seconds) {
   clearInterval(timerInterval);
   let t = seconds;
   const el = document.getElementById('timer-display');
-  el.textContent = t;
-  el.className = '';
+  const ring = document.getElementById('timer-ring');
+  const C = 113;
+  el.textContent = t; el.style.color = '#e2e8f0';
+  if (ring) { ring.style.stroke = '#6366f1'; ring.style.strokeDashoffset = 0; }
   timerInterval = setInterval(() => {
     t--;
     el.textContent = t;
-    if (t <= 10) el.className = 'timer-danger';
-    else if (t <= 20) el.className = 'timer-warn';
+    if (ring) ring.style.strokeDashoffset = C * (1 - t / seconds);
+    if (t <= 10) { el.style.color = '#ef4444'; if (ring) ring.style.stroke = '#ef4444'; }
+    else if (t <= 20) { el.style.color = '#f97316'; if (ring) ring.style.stroke = '#f97316'; }
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 }
@@ -371,24 +386,31 @@ socket.on('room:state', ({ state, players }) => {
 let drawOrder = [];
 let currentDrawerId = null;
 
+let drawOrder = [];
+let currentDrawerId = null;
+
 function updatePlayerList(players, drawerId) {
   if (drawerId !== undefined) currentDrawerId = drawerId;
-
-  // Maintain join order for draw rotation
-  const currentIds = drawOrder.map(p => p.socketId);
-  players.forEach(p => { if (!currentIds.includes(p.socketId)) drawOrder.push(p); });
+  const ids = drawOrder.map(p => p.socketId);
+  players.forEach(p => { if (!ids.includes(p.socketId)) drawOrder.push(p); });
   drawOrder = drawOrder.filter(d => players.find(p => p.socketId === d.socketId));
   drawOrder = drawOrder.map(d => ({ ...d, ...players.find(p => p.socketId === d.socketId) }));
-
   const list = document.getElementById('player-list');
-  list.innerHTML = drawOrder.map(p => {
+  list.innerHTML = drawOrder.map((p, i) => {
     const drawing = p.socketId === currentDrawerId;
-    const guessed = p.guessed;
-    const cls = drawing ? 'drawing' : (guessed ? 'guessed' : '');
-    const icon = drawing ? '🖌️ ' : '   ';
-    const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.7rem">(you)</span>' : '';
-    const rankBadge = p.rating ? `<span class="rank-badge" title="${getRank(p.rating).name}">${getRank(p.rating).emoji}</span>` : '';
-    return `<li class="${cls}"><span>${icon}${rankBadge}${p.username}${you}</span><span class="player-score">${p.score}</span></li>`;
+    const cls = drawing ? 'drawing' : (p.guessed ? 'guessed' : '');
+    const you = p.socketId === socket.id ? ' <span style="color:#475569;font-size:.65rem">(you)</span>' : '';
+    const rank = p.rating ? getRank(p.rating).emoji : '';
+    const avatar = p.avatar || '👤';
+    const nc = p.userId ? `style="cursor:pointer" onclick="loadProfile('${p.username}')"` : '';
+    return `<li class="${cls}">
+      <span class="player-avatar">${drawing ? '🖌️' : avatar}</span>
+      <span class="player-info" ${nc}>
+        <div class="player-name">${rank} ${p.username}${you}</div>
+        <div class="player-rank-num">#${i+1}</div>
+      </span>
+      <span class="player-score">${p.score}</span>
+    </li>`;
   }).join('');
 }
 
@@ -535,12 +557,19 @@ socket.on('hint', ({ maskedWord }) => {
   }
 });
 
-socket.on('state:reveal', ({ word }) => {
+socket.on('state:reveal', ({ word, scores, deltas }) => {
   clearInterval(timerInterval);
   document.getElementById('reveal-word').textContent = word;
+  if (scores && deltas) {
+    const sorted = [...scores].sort((a,b) => b.score - a.score);
+    document.getElementById('reveal-scores').innerHTML = sorted.map(p => {
+      const d = deltas[p.socketId];
+      return `<div class="reveal-score-row"><span>${p.avatar||'👤'} ${p.username}</span><span>${p.score}${d?`<span class="rdelta"> +${d}</span>`:``}</span></div>`;
+    }).join('');
+  }
   document.getElementById('reveal-overlay').classList.remove('hidden');
   document.getElementById('chat-input').disabled = false;
-  setTimeout(() => document.getElementById('reveal-overlay').classList.add('hidden'), 4800);
+  setTimeout(() => document.getElementById('reveal-overlay').classList.add('hidden'), 5000);
 });
 
 socket.on('state:end', ({ scores }) => {
@@ -549,6 +578,17 @@ socket.on('state:end', ({ scores }) => {
   document.getElementById('final-scores').innerHTML = scores
     .map((p, i) => `<div class="final-score-row"><span>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} ${p.username}</span><span>${p.score}</span></div>`)
     .join('');
+});
+
+socket.on('auto:starting', ({ seconds }) => {
+  let t = seconds;
+  const p = document.querySelector('#waiting-overlay p');
+  if (p) p.textContent = `Game starting in ${t}...`;
+  const iv = setInterval(() => {
+    t--;
+    if (p) p.textContent = t > 0 ? `Game starting in ${t}...` : 'Starting!';
+    if (t <= 0) clearInterval(iv);
+  }, 1000);
 });
 
 socket.on('error', msg => {

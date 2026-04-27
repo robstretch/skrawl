@@ -174,6 +174,10 @@ app.get('/leaderboard', async (req, res) => {
 
 // ─── Word Bank ───────────────────────────────────────────────────────────────
 
+const AVATARS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🦆','🦉','🐺','🦄','🐬','🦋','🐢','🦀','🐙','🦞','🦎','🐝','🦖','🦕'];
+let avatarIndex = 0;
+function nextAvatar() { return AVATARS[avatarIndex++ % AVATARS.length]; }
+
 const WORDS = [
   'apple','banana','guitar','elephant','pizza','volcano','umbrella','skateboard',
   'astronaut','jellyfish','tornado','lighthouse','cactus','submarine','penguin',
@@ -250,9 +254,13 @@ function startChoosing(roomId) {
   room.guessedBy = [];
   room.currentWord = null;
 
+  const currentRoundNum = Math.floor(room.round / Math.max(1, room.players.length)) + 1;
   io.to(roomId).emit('state:choosing', {
     drawerId: drawer.socketId,
     drawerName: drawer.username,
+    drawerAvatar: drawer.avatar || '🎨',
+    round: currentRoundNum,
+    maxRounds: room.maxRounds,
   });
 
   // Send word choices only to the drawer
@@ -342,7 +350,10 @@ function endTurn(roomId) {
   updateTurnRatings(room);
 
   room.state = 'reveal';
-  io.to(roomId).emit('state:reveal', { word: room.currentWord });
+  const deltas = {};
+  room.guessedBy.forEach((sid, i) => { deltas[sid] = Math.max(50, 500 - i * 100); });
+  if (room.drawerId) deltas[room.drawerId] = room.guessedBy.length * 25;
+  io.to(roomId).emit('state:reveal', { word: room.currentWord, scores: room.players, deltas });
 
   setTimeout(() => {
     room.round++;
@@ -409,6 +420,7 @@ io.on('connection', (socket) => {
       username: verifiedUsername || `Guest_${socket.id.slice(0, 4)}`,
       score: 0,
       rating: 1000,
+      avatar: nextAvatar(),
     });
 
     io.to(roomId).emit('room:players', room.players);
@@ -416,6 +428,7 @@ io.on('connection', (socket) => {
 
     // Auto-start public room when 2+ players in lobby
     if (room.isPublic && room.state === 'lobby' && room.players.length >= 2) {
+      io.to(roomId).emit('auto:starting', { seconds: 3 });
       setTimeout(() => {
         if (rooms[roomId] && rooms[roomId].state === 'lobby' && rooms[roomId].players.length >= 2) {
           rooms[roomId].round = 0;

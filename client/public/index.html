@@ -93,6 +93,7 @@
 
     <!-- Players sidebar -->
     <div class="sidebar" id="players-sidebar">
+      <div class="round-indicator" id="round-indicator"></div>
       <div class="sidebar-logo">🎨 Sketchy</div>
       <h3>Players</h3>
       <ul id="player-list"></ul>
@@ -101,9 +102,20 @@
     <!-- Canvas area -->
     <div class="canvas-area">
       <div class="game-header">
-        <div id="room-code-display" title="Click to copy room link" style="cursor:pointer"></div>
-        <div id="word-display">Waiting...</div>
-        <div id="timer-display"></div>
+        <div class="timer-wrap">
+          <svg class="timer-svg" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="#1e293b" stroke-width="4"/>
+            <circle id="timer-ring" cx="22" cy="22" r="18" fill="none" stroke="#6366f1" stroke-width="4"
+              stroke-dasharray="113" stroke-dashoffset="0" stroke-linecap="round"
+              transform="rotate(-90 22 22)"/>
+          </svg>
+          <span id="timer-display"></span>
+        </div>
+        <div class="word-badge"><span id="word-display">Waiting...</span></div>
+        <div class="header-right">
+          <div id="round-badge" class="round-badge"></div>
+          <div id="room-code-display" title="Click to copy" style="cursor:pointer"></div>
+        </div>
       </div>
 
       <!-- Word choice overlay -->
@@ -117,7 +129,9 @@
       <!-- Reveal overlay -->
       <div id="reveal-overlay" class="overlay hidden">
         <div class="overlay-box">
-          <h3>The word was: <span id="reveal-word"></span></h3>
+          <p class="reveal-label">The word was</p>
+          <div class="reveal-word-big" id="reveal-word"></div>
+          <div id="reveal-scores"></div>
         </div>
       </div>
 
