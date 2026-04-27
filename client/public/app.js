@@ -195,6 +195,9 @@ function joinRoom(id, isPublic = false) {
     document.querySelector('.round-select').style.display = '';
   }
 
+  // Show waiting overlay
+  document.getElementById('waiting-overlay').classList.remove('hidden');
+
   socket.emit('room:join', {
     roomId: id,
     username: user.username,
@@ -210,7 +213,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
 document.getElementById('btn-play-again').addEventListener('click', () => {
   document.getElementById('end-overlay').classList.add('hidden');
-  document.getElementById('waiting-overlay').classList.remove('hidden');
+  if (currentRoomIsPublic) {
+    enterPublicRoom();
+  } else {
+    joinRoom(roomId, false);
+  }
 });
 
 // ── Canvas Setup ──────────────────────────────────────────────────────────────
