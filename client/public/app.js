@@ -433,7 +433,10 @@ socket.on('state:choosing', ({ drawerId, drawerName, drawerAvatar, round, maxRou
   if (ring) ring.style.strokeDashoffset = 0;
   document.getElementById('word-display').textContent = isDrawer ? 'Choose a word!' : `${drawerAvatar || ''} ${drawerName} is choosing...`;
   if (round && maxRounds) {
-    document.getElementById('round-indicator').textContent = `Round ${round} of ${maxRounds}`;
+    const roundText = `Round ${round} / ${maxRounds}`;
+    document.getElementById('round-indicator').textContent = roundText;
+    const rb = document.getElementById('round-badge');
+    if (rb) rb.textContent = roundText;
   }
   addChat(`<span class="name">📢</span> ${drawerAvatar || ''} ${drawerName} is drawing`, 'system');
   updatePlayerList(drawOrder.length ? drawOrder : [], drawerId);

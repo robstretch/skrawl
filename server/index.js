@@ -431,6 +431,7 @@ io.on('connection', (socket) => {
 
     // Auto-start public room when 2+ players in lobby
     if (room.isPublic && room.state === 'lobby' && room.players.length >= 2) {
+      io.to(roomId).emit('auto:starting', { seconds: 3 });
       setTimeout(() => {
         if (rooms[roomId] && rooms[roomId].state === 'lobby' && rooms[roomId].players.length >= 2) {
           rooms[roomId].round = 0;
