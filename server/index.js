@@ -135,12 +135,30 @@ app.get('/profile/:username', async (req, res) => {
     .select('username, rating, drawing_rating, guessing_rating, games_played, wins, created_at')
     .eq('username', req.params.username)
     .single();
-  if (error) return res.status(404).json({ error: 'User not found' });
+  if (error) {
+    // Try without new columns in case migration hasn't run
+    const { data: d2, error: e2 } = await supabase
+      .from('users')
+      .select('username, rating, games_played, wins, created_at')
+      .eq('username', req.params.username)
+      .single();
+    if (e2) return res.status(404).json({ error: 'User not found' });
+    return res.json({
+      ...d2,
+      drawing_rating: d2.rating,
+      guessing_rating: d2.rating,
+      rank: getRank(d2.rating),
+      drawing_rank: getRank(d2.rating),
+      guessing_rank: getRank(d2.rating),
+    });
+  }
   res.json({
     ...data,
+    drawing_rating: data.drawing_rating || data.rating,
+    guessing_rating: data.guessing_rating || data.rating,
     rank: getRank(data.rating),
-    drawing_rank: getRank(data.drawing_rating),
-    guessing_rank: getRank(data.guessing_rating),
+    drawing_rank: getRank(data.drawing_rating || data.rating),
+    guessing_rank: getRank(data.guessing_rating || data.rating),
   });
 });
 
