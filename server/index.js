@@ -202,6 +202,14 @@ const AVATARS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨',
 let avatarCounter = 0;
 function nextAvatar() { return AVATARS[avatarCounter++ % AVATARS.length]; }
 
+// Debug rooms
+app.get('/debug-rooms', (req, res) => {
+  const summary = Object.values(rooms).map(r => ({
+    id: r.id, isPublic: r.isPublic, state: r.state, players: r.players.length
+  }));
+  res.json(summary);
+});
+
 // Public room matchmaking endpoint
 app.get('/public-room', (req, res) => {
   // Find a public room in lobby state with < 10 players, or return PUBLIC
